@@ -2,5 +2,5 @@
 
 ```
 kubectl create namespace argocd
-kubectl apply -k --server-side argocd/
+kubectl apply --server-side -k argocd/
 ```
