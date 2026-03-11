@@ -55,7 +55,21 @@ provider "postgresql" {
   sslmode  = "disable"
 }
 
+resource "terraform_data" "postgres_ready" {
+  depends_on = [docker_container.postgres]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      timeout 60 sh -c 'until pg_isready -h localhost -p ${var.postgres_port} -U postgres; do echo "Waiting for postgres..."; sleep 2; done' || {
+        echo "Failed: Postgres not ready after 60 seconds"
+        exit 1
+      }
+      echo "Postgres is ready!"
+    EOT
+  }
+}
+
 resource "postgresql_database" "postgrest" {
   name       = "postgrest"
-  depends_on = [docker_container.postgres]
+  depends_on = [terraform_data.postgres_ready]
 }
