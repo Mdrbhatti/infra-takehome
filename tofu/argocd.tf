@@ -14,3 +14,11 @@ resource "terraform_data" "argocd" {
     command = "kubectl delete namespace argocd --ignore-not-found"
   }
 }
+
+resource "terraform_data" "apps" {
+  depends_on = [terraform_data.argocd, kubernetes_secret.postgrest_credentials]
+
+  provisioner "local-exec" {
+    command = "kubectl apply -f ${path.module}/../argocd/apps/apps.yaml"
+  }
+}

@@ -64,7 +64,7 @@ resource "random_password" "postgrest_superuser" {
 
 # Create superuser role in postgrest database
 resource "postgresql_role" "postgrest_superuser" {
-  name       = "postgrest_superuser"
+  name       = var.postgrest_username
   password   = random_password.postgrest_superuser.result
   login      = true
   superuser  = true
@@ -88,13 +88,13 @@ resource "kubernetes_secret" "postgrest_credentials" {
   }
 
   data = {
-    username = "postgrest_superuser"
+    username = var.postgrest_username
     password = random_password.postgrest_superuser.result
     database = "postgrest"
-    host     = "host.docker.internal"
+    host     = "host.k3d.internal"
     port     = tostring(var.postgres_port)
+    uri      = "postgres://${var.postgrest_username}:${random_password.postgrest_superuser.result}@host.k3d.internal:${var.postgres_port}/postgrest"
   }
 
   depends_on = [postgresql_role.postgrest_superuser]
 }
-
