@@ -1,21 +1,3 @@
-provider "docker" {}
-
-resource "terraform_data" "k3d_cluster" {
-  input = {
-    name  = var.k3d_cluster_name
-    image = "rancher/k3s:${var.k3s_version}"
-  }
-
-  provisioner "local-exec" {
-    command = "k3d cluster create ${self.input.name} --image ${self.input.image} --servers 1 --agents 0 -p '8080:80@loadbalancer'"
-  }
-
-  provisioner "local-exec" {
-    when    = destroy
-    command = "k3d cluster delete ${self.input.name}"
-  }
-}
-
 resource "docker_image" "postgres" {
   name         = "postgres:16-alpine"
   keep_locally = true
@@ -71,5 +53,5 @@ resource "terraform_data" "postgres_ready" {
 
 resource "postgresql_database" "postgrest" {
   name       = "postgrest"
-  depends_on = [terraform_data.postgres_ready]
+  depends_on = [terraform_data.postgres_ready, terraform_data.k3d_ready]
 }
