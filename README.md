@@ -53,3 +53,48 @@ Use a kubernetes job to inject some data into the postgres database
 ## Provide an expected screenshot
 
 Update this file, README.md, with a screenshot of what we should see when we visit the URL after following your instructions - this should show us the data you have injected.
+
+# Solution
+
+## Deploy
+
+1. Clone the repository and navigate to the tofu directory:
+   ```bash
+   cd tofu
+   ```
+
+2. Initialize and deploy:
+   ```bash
+   tofu init
+   tofu plan -out plan.out
+   tofu apply plan.out
+   ```
+
+   This will:
+   - Create a k3d cluster with port 8080 mapped to the load balancer
+   - Deploy PostgreSQL in a Docker container
+   - Install ArgoCD into the cluster
+   - Deploy postgrest via ArgoCD
+   - Inject sample blog posts data via Kubernetes Job (ArgoCD)
+
+## Verify Deployment
+
+1. Check postgrest pod is running:
+   ```bash
+   kubectl get pods -n postgrest
+   ```
+   Ensure the `postgrest` pod status is `Running`.
+
+2. Check data injection job completed:
+   ```bash
+   kubectl get jobs -n postgrest
+   ```
+   Ensure `inject-postgrest-data` shows `1/1 Completed` under COMPLETIONS.
+
+3. Access the postgrest API in your browser:
+
+   http://postgrest.localhost:8080/posts
+
+   You should see a JSON array of blog posts from pipekit.io.
+
+   ![postgrest API Response](./screenshot.png)

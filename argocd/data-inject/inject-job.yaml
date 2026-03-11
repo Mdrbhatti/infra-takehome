@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: inject-postgrest-data
+  namespace: postgrest
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-postgrest
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgREST to be ready..."
+              until curl -s http://postgrest:80/ > /dev/null 2>&1; do
+                echo "PostgREST not ready yet, waiting..."
+                sleep 2
+              done
+              echo "PostgREST is ready!"
+      containers:
+        - name: psql
+          image: postgres:16-alpine
+          env:
+            - name: DATABASE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: postgrest-credentials
+                  key: uri
+          command:
+            - psql
+            - $(DATABASE_URI)
+            - -c
+            - |
+              CREATE TABLE IF NOT EXISTS posts (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(200) NOT NULL,
+                summary TEXT,
+                link VARCHAR(500),
+                published_at TIMESTAMP DEFAULT NOW()
+              );
+              INSERT INTO posts (title, summary, link) VALUES
+                ('Using Helm Charts to Deploy Argo Workflows on Kubernetes', 'Deploy Argo Workflows using Helm charts and the challenges and possibilities of installation.', 'https://pipekit.io/blog/helm-argo-workflows'),
+                ('Temporal vs. Argo Workflows', 'Argo Workflows excels in Kubernetes automation with YAML or Python, ideal for CI/CD and data pipelines. Temporal offers flexibility with general-purpose languages.', 'https://pipekit.io/blog/temporal-vs-argo'),
+                ('Argo for ML: Achieving Scalability and User Experience', 'Discussing goals for building machine learning platforms and the role of Argo Workflows.', 'https://pipekit.io/blog/argo-ml'),
+                ('Demystifying Argo Workflows: An Architectural Deep Dive', 'Journey through the workings of Argo Workflows, unraveling the mysteries of the Argo server and controller.', 'https://pipekit.io/blog/argo-architecture'),
+                ('Why it is Time to Migrate Your CI/CD from Jenkins to Argo', 'Explore the challenges, solutions, and benefits of Argo for CI/CD and why you should transition from Jenkins.', 'https://pipekit.io/blog/jenkins-to-argo')
+              ON CONFLICT DO NOTHING;
+              NOTIFY pgrst, 'reload schema';

@@ -89,12 +89,8 @@ resource "kubernetes_secret" "postgrest_credentials" {
 
   data = {
     username = var.postgrest_username
-    password = random_password.postgrest_superuser.result
-    database = "postgrest"
-    host     = "host.k3d.internal"
-    port     = tostring(var.postgres_port)
     uri      = "postgres://${var.postgrest_username}:${random_password.postgrest_superuser.result}@host.k3d.internal:${var.postgres_port}/postgrest"
   }
 
-  depends_on = [postgresql_role.postgrest_superuser]
+  depends_on = [random_password.postgrest_superuser]
 }
