@@ -55,3 +55,46 @@ resource "postgresql_database" "postgrest" {
   name       = "postgrest"
   depends_on = [terraform_data.postgres_ready, terraform_data.k3d_ready]
 }
+
+# Generate random password for postgrest superuser
+resource "random_password" "postgrest_superuser" {
+  length  = 32
+  special = false
+}
+
+# Create superuser role in postgrest database
+resource "postgresql_role" "postgrest_superuser" {
+  name       = "postgrest_superuser"
+  password   = random_password.postgrest_superuser.result
+  login      = true
+  superuser  = true
+  depends_on = [postgresql_database.postgrest, terraform_data.postgres_ready]
+}
+
+# Kubernetes namespace for postgrest
+resource "kubernetes_namespace" "postgrest" {
+  metadata {
+    name = "postgrest"
+  }
+
+  depends_on = [terraform_data.k3d_ready]
+}
+
+# Kubernetes secret with postgrest credentials
+resource "kubernetes_secret" "postgrest_credentials" {
+  metadata {
+    name      = "postgrest-credentials"
+    namespace = kubernetes_namespace.postgrest.metadata[0].name
+  }
+
+  data = {
+    username = "postgrest_superuser"
+    password = random_password.postgrest_superuser.result
+    database = "postgrest"
+    host     = "host.docker.internal"
+    port     = tostring(var.postgres_port)
+  }
+
+  depends_on = [postgresql_role.postgrest_superuser]
+}
+
